@@ -1,0 +1,24 @@
+MacTerm RDP component
+
+FreeRDP and WinPR 3.33.0
+Copyright FreeRDP contributors.
+Apache License 2.0. See FreeRDP-LICENSE.
+https://github.com/FreeRDP/FreeRDP/releases/tag/3.33.0
+
+OpenSSL 3.5.9 LTS
+Copyright The OpenSSL Project Authors.
+Apache License 2.0. See OpenSSL-LICENSE.
+https://github.com/openssl/openssl/tree/openssl-3.5.9
+
+cJSON 1.7.19
+Copyright Dave Gamble and cJSON contributors.
+MIT License. See cJSON-LICENSE.
+https://github.com/DaveGamble/cJSON/tree/v1.7.19
+
+These libraries are statically linked into MacTermRDP. The local FreeRDP
+clipboard transport modification is documented below. Their fixed official source URLs and SHA-256 checksums are
+listed in sources.json. Project-local build scripts record all build options.
+The application does not require a system FreeRDP, OpenSSL, CMake, or Python
+installation at runtime. macOS system frameworks and zlib are used separately.
+
+Local FreeRDP modification: channels/client/addin.c adds a cliprdr-only bound of 2,162,688 bytes per fragmented message and at most 16 queued messages before allocation/queueing. The reproducible patch is tools/patch-rdp-clipboard.py in the MacTerm source. Only the cliprdr client/server channel is compiled into this build; file streaming capabilities are not advertised.

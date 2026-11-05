@@ -1,0 +1,37 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'"><style>
+html,body,#desktop{margin:0;width:100%;height:100%;overflow:hidden;background:#10151f;color:#e8eef5}canvas{outline:none}#message{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;font:13px system-ui;color:#a0aec0}#message span{padding:20px 28px;border:1px solid #354356;border-radius:12px;background:#1b222e;max-width:80%;white-space:pre-wrap;text-align:center}
+</style></head><body><div id="desktop"></div><div id="message"><span>正在准备远程桌面…</span></div><script src="novnc.js"></script><script>
+'use strict';
+const bridge=body=>window.webkit.messageHandlers.vnc.postMessage(body);
+const channel={readyState:0,binaryType:'arraybuffer',protocol:'',onopen:null,onmessage:null,onerror:null,onclose:null,
+ send(data){if(this.readyState!==1)return;const bytes=new Uint8Array(data.buffer??data,data.byteOffset??0,data.byteLength);if(bytes.length>4194304)throw Error('VNC outgoing frame too large');let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));bridge({type:'send',data:btoa(raw)});},
+ close(){if(this.readyState===3)return;this.readyState=3;bridge({type:'close'});queueMicrotask(()=>this.onclose?.({code:1000,reason:'closed',wasClean:true}));}
+};
+let rfb=null,connected=false;const message=document.querySelector('#message');
+window.vncMessage=text=>{message.firstElementChild.textContent=text;message.style.display=text?'flex':'none';};
+window.vncOpen=()=>{if(channel.readyState!==0)return;channel.readyState=1;channel.onopen?.({});};
+window.vncReceive=encoded=>{if(channel.readyState!==1)return;const raw=atob(encoded),bytes=Uint8Array.from(raw,c=>c.charCodeAt(0));channel.onmessage?.({data:bytes.buffer});};
+window.vncClose=()=>{channel.readyState=3;rfb?.disconnect();channel.onclose?.({code:1000,reason:'closed',wasClean:true});};
+window.vncCredentials=encoded=>{const data=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))));rfb.sendCredentials(data);};
+window.vncAction=action=>{if(!connected)return;if(action==='ctrlaltdel')rfb.sendCtrlAltDel();if(action==='focus')rfb.focus();};
+window.vncSendClipboard=encoded=>{
+ if(!connected||!rfb||rfb.viewOnly)return {ok:false,message:'连接未就绪或处于只读模式。'};
+ let text;try{text=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(encoded),c=>c.charCodeAt(0))));}catch{return {ok:false,message:'剪贴板文本无效。'};}
+ if(typeof text!=='string'||new TextEncoder().encode(text).length>1048576||text.includes('\0'))return {ok:false,message:'仅支持不超过 1 MiB 且不含 NUL 的文本。'};
+ try{const mode=rfb.clipboardPasteFrom(text);return {ok:true,message:mode==='notified'?'已通知服务器有新文本，等待服务器请求；协议没有传送确认。':'文本已提交到连接；协议没有传送确认。'};}catch(error){return {ok:false,message:error.message==='VNC_CLIPBOARD_LATIN1_ONLY'?'服务器仅支持 Latin-1，无法发送中文或表情；此次未发送。':'剪贴板发送失败。'};}
+};
+window.vncStart=options=>{
+ rfb=new MacTermVNC.RFB(document.querySelector('#desktop'),channel,{shared:true});rfb.scaleViewport=true;rfb.resizeSession=false;rfb.viewOnly=!!options.viewOnly;rfb.background='#10151f';
+ rfb.addEventListener('connect',()=>{connected=true;vncMessage('');bridge({type:'connected'});rfb.focus();});
+ rfb.addEventListener('desktopname',event=>bridge({type:'name',value:event.detail.name}));
+ rfb.addEventListener('credentialsrequired',event=>bridge({type:'credentials',types:event.detail.types}));
+ rfb.addEventListener('securityfailure',event=>bridge({type:'failure',value:'VNC 认证失败'+(event.detail.reason?'：'+event.detail.reason:'')}));
+ rfb.addEventListener('serververification',()=>bridge({type:'failure',value:'此服务器需要身份指纹验证，当前版本尚不支持这种认证方式。'}));
+ rfb.addEventListener('disconnect',event=>{connected=false;bridge({type:'disconnected',clean:!!event.detail.clean});});
+ // These events only update an in-app cache, never the macOS pasteboard.
+ rfb.addEventListener('clipboard',event=>{const text=event.detail.text;if(new TextEncoder().encode(text).length>1048576||text.includes('\0')){bridge({type:'clipboardError'});return;}bridge({type:'clipboard',text});});
+ bridge({type:'ready'});
+};
+window.addEventListener('error',()=>bridge({type:'failure',value:'VNC 页面处理失败，连接已停止。'}));
+window.macTermVNCLibraryReady.then(()=>bridge({type:'loaded'})).catch(()=>bridge({type:'failure',value:'VNC 客户端初始化失败。'}));
+</script></body></html>
