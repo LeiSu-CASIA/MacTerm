@@ -4,7 +4,7 @@
 
 面向 macOS 的轻量终端工作台。使用 AppKit、WebKit、xterm.js 与系统 OpenSSH，提供 SSH、多标签终端、会话管理和 SFTP 文件浏览 / 传输。
 
-当前版本：**0.3.43**。基础功能已通过本机验证，仍欢迎提交实际使用反馈。此项目与 MacSCP 及其他同名项目独立，不包含 MobaXterm 的代码或商标资产。
+当前版本：**0.3.43**。
 
 ## 功能
 
@@ -12,11 +12,8 @@
 - 左侧 SFTP 文件浏览、上传下载、目录传输、传输队列、目录书签与远程文本编辑。
 - 终端查找、主题 / 字号、输出日志、命令宏、广播、正则高亮与规则组。
 - FTP / 显式与隐式 FTPS、串口、Telnet，以及内嵌 VNC / RDP 首版。
-- 密码在连接时输入；本应用不持久保存密码或提供钥匙串自动填充。
 
 ## 界面展示
-
-以下图片由独立演示进程生成，使用虚构会话、示例文件和本地终端，不包含私人服务器或真实用户数据。
 
 ### 多标签终端与会话库
 
@@ -26,7 +23,7 @@
 
 ### 文件工作区
 
-支持浏览、筛选、上传下载和传输队列。下图为 FTP / FTPS 的示例列表；SSH 的 SFTP 文件浏览位于左侧会话区域下方。
+支持浏览、筛选、上传下载和传输队列。下图展示 FTP / FTPS 文件列表。通过 SSH 连接时，SFTP 文件栏位于左侧会话区域下方。
 
 ![MacTerm 文件工作区（示例数据）](docs/assets/file-browser.png)
 
@@ -38,7 +35,7 @@
 
 ## 从源码构建
 
-主要验证平台为 Apple Silicon Mac。部署目标为 macOS 12，Intel 和其他系统版本的兼容性仍需验证。需要 Apple Command Line Tools（含 Swift / clang）、Node.js 18 或更新版本、npm 和 Python 3；无需完整 Xcode。
+部署目标为 macOS 12，主要验证平台为 Apple Silicon Mac。构建需要 Apple Command Line Tools（含 Swift 和 clang）、Node.js 18 或更新版本、npm 和 Python 3。
 
 ```sh
 npm ci
@@ -46,18 +43,18 @@ npm ci
 open build/MacTerm.app
 ```
 
-首次构建会下载锁定版本的 FreeRDP、OpenSSL、cJSON，并在项目内准备 CMake，可能需要较长时间。下载地址和 SHA-256 在 `tools/fetch-rdp-deps.py` 固定。运行已构建的应用不需要 Node、Python 或系统 FreeRDP。
+首次构建会下载指定版本的 FreeRDP、OpenSSL 和 cJSON，并在项目内准备 CMake。
 
-构建产物位于 `build.noindex/`，`build/` 为兼容入口，避免历史构建出现在 Spotlight 搜索中。应用使用本机临时签名，尚未进行 Developer ID 公证。
+构建产物位于 `build.noindex/`，也可通过 `build/` 访问。应用使用本机临时签名，尚未通过 Apple 公证。
 
 ## 基础使用
 
 1. 启动 App，点击新建 SSH 会话，填写主机、用户名和端口。
-2. 在左侧双击会话连接；密码或私钥口令按 SSH 提示输入。
+2. 在左侧双击会话连接，按 SSH 提示输入密码或私钥口令。
 3. 登录成功后使用左侧 SFTP 文件栏浏览、上传或下载文件。
-4. 添加其他会话会创建新标签；关闭应用前会提示未保存的编辑内容。
+4. 添加会话可打开新标签。
 
-会话等用户数据保存在本机 `~/Library/Application Support/MacTerm/`，不属于本仓库。导出的会话或目录书签可能含服务器地址或工作路径，请自行检查后再分享。
+会话数据保存在 `~/Library/Application Support/MacTerm/`。
 
 ## 验证
 
@@ -71,13 +68,12 @@ build/ftp-test-env/bin/pip install -r Tests/ftp-requirements.txt
 build/ftp-test-env/bin/python Tests/ftp_integration.py
 ```
 
-测试只针对临时回环服务和生成的数据，部分界面测试需要允许访问 macOS WebKit 等本机服务。不要把测试配置指向生产服务器。
+集成测试使用本机临时服务和示例数据。部分界面测试需要访问 macOS WebKit 服务。
 
 ## 已知限制
 
-- 未集成 X Server / XDMCP；分屏暂非重点。
-- 真实 Windows、更多远程服务器、输入法组合和 Finder 拖出仍需继续人工验证。
-- FTP / FTPS 需要标准 MLSD 和 UTF-8；FTP 比较原内容与最终改名之间存在协议竞争窗口。
+- 暂未集成 X Server / XDMCP。
+- FTP / FTPS 需要服务器支持标准 MLSD 和 UTF-8。FTP 文件在校验和改名之间仍可能被其他客户端修改。
 - RDP 首版不包含音频、磁盘 / 打印机重定向、网关或多显示器支持。
 
 详细说明：[RDP](docs/RDP接入.md)、[VNC](docs/VNC接入.md)。
